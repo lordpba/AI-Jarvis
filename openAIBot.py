@@ -1,31 +1,38 @@
+import os
 import speech_recognition as sr
 import pyttsx3
-import openai
+from dotenv import load_dotenv
+from openai import OpenAI
 
-#Initializing pyttsx3
+load_dotenv()
+
+# Inizializza pyttsx3
 listening = True
 engine = pyttsx3.init()
 
-#Set your openai api key and customizing the chatgpt role
-openai.api_key = "xyz"
-messages = [{"role": "system", "content": "Your name is Jarvis and give answers in 2 lines"}]
+# Crea un'istanza del client OpenAI
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-#Customizing The output voice
+messages = [{"role": "system", "content": "Il tuo nome è Jarvis e fornisci risposte in 2 righe"}]
+
+# Personalizzazione della voce di output
 voices = engine.getProperty('voices')
 rate = engine.getProperty('rate')
 volume = engine.getProperty('volume')
 
-
 def get_response(user_input):
     messages.append({"role": "user", "content": user_input})
-    response = openai.ChatCompletion.create(
-        model = "gpt-3.5-turbo",
-        messages = messages
-    )
-    ChatGPT_reply = response["choices"][0]["message"]["content"]
-    messages.append({"role": "assistant", "content": ChatGPT_reply})
-    return ChatGPT_reply
-
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages
+        )
+        chatgpt_reply = response.choices[0].message.content
+        messages.append({"role": "assistant", "content": chatgpt_reply})
+        return chatgpt_reply
+    except Exception as e:
+        print(f"Errore durante la chiamata API: {e}")
+        return "Mi dispiace, si è verificato un errore nel recupero della risposta."
 
 while listening:
     with sr.Microphone() as source:
@@ -34,24 +41,18 @@ while listening:
         recognizer.dynamic_energy_threshold = 3000
 
         try:
-            print("Listening...")
+            print("Ascoltando...")
             audio = recognizer.listen(source, timeout=5.0)
-            response = recognizer.recognize_google(audio)
+            response = recognizer.recognize_google(audio, language='it-IT')
             print(response)
-           
-            if "jarvis" in response.lower():
-           
-                response_from_openai = get_response(response)
-                engine.setProperty('rate', 120)
-                engine.setProperty('volume', volume)
-                engine.setProperty('voice', 'greek')
-                engine.say(response_from_openai)
-                engine.runAndWait()
-               
-           
-               
-            else:
-                print("Didn't recognize 'jarvis'.")
-           
+
+            response_from_openai = get_response(response)
+            engine.setProperty('rate', 120)
+            engine.setProperty('volume', volume)
+            engine.say(response_from_openai)
+            engine.runAndWait()
+
         except sr.UnknownValueError:
-            print("Didn't recognize anything.")
+            print("Non ho riconosciuto nulla.")
+        except sr.RequestError:
+            print("Errore di richiesta; controlla la tua connessione internet.")
