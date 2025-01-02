@@ -17,5 +17,5 @@ sudo apt-get install Flac
 # To Run
 
 ```bash
-python openAIBot.py
+python main.py
 ``````
